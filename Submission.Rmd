@@ -1,0 +1,80 @@
+
+## STEP 0: LOAD THE LIBRARIES
+```{r}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(corrplot)
+```
+
+## STEP 1: LOAD THE TRAINING AND TEST DATA
+```{r}
+trainRaw = read.csv("./data/pml-training.csv")
+testRaw = read.csv("./data/pml-testing.csv")
+dim(trainRaw)
+dim(testRaw)
+```
+
+## STEP 2: UNDERSTAND THE PROBLEM: THE GOAL IS TO PREDICT THE MANNER IN WHICH THEY DID EXERCIES - "classe" variable
+```{r}
+str(trainRaw$classe)
+```
+
+## STEP 3: DATA CLEANING EXERCISE
+```{r}
+sum(complete.cases(trainRaw))
+trainRaw = trainRaw[, colSums(is.na(trainRaw)) == 0] # RETAIN COLUMNS WITHOUT NAs
+testRaw = testRaw[, colSums(is.na(testRaw)) == 0] # RETAIN COLUMNS WITHOUT NAs
+classe = trainRaw$classe
+trainRemove = grepl("^X|timestamp|window", names(trainRaw))
+trainRaw = trainRaw[,!trainRemove]
+trainCleaned = trainRaw[, sapply(trainRaw, is.numeric)] #RETAIN NUMERIC COLUMNS
+trainCleaned$classe = classe # THIS IS A FACTOR WE ARE TRYING TO PREDICT
+
+testRemove = grepl("^X|timestamp|window", names(testRaw))
+testRaw = testRaw[,!testRemove]
+testCleaned = testRaw[, sapply(testRaw, is.numeric)]
+```
+
+## STEP 4: MODEL USING RANDOM FOREST - USE 70:30 FOR CROSS-VALIDATION
+```{r}
+set.seed(1000) # For reproducibile purpose
+inTrain = createDataPartition(trainCleaned$classe, p = 0.70, list = F)
+trainData = trainCleaned[inTrain,]
+testData = trainCleaned[-inTrain,]
+controlRf <- trainControl(method = "cv", 5)
+modelRf <-
+	train(
+		classe ~ .,
+		data = trainData,
+		method = "rf",
+		trControl = controlRf,
+		ntree = 250
+	)
+```
+
+## STEP 5: PREDICT USING THE TRAIN DATA
+```{r}
+predictRf = predict(modelRf, testData)
+```
+
+## STEP 6: FIND THE ACCURACY WITH OUT-SAMPLE DATA
+```{r}
+confusionMatrix(testData$classe, predictRf)
+confusionMatrix(testData$classe, predictRf)$overall[1]
+accuracy = postResample(predictRf, testData$classe)
+accuracy
+outSampleError =	1 - as.numeric(confusionMatrix(testData$classe, predictRf)$overall[1])
+outSampleError
+result =	predict(modelRf, testCleaned[,-length(names(testCleaned))])
+result
+```
+
+## STEP 7: DESCRIPTIVE PLOT - CORRELATION BETWEEN PREDICTORS; TREE MODEL OUPUT
+```{r}
+corrPlot = cor(trainData[,-length(names(trainData))])
+corrplot(corrPlot, method = "circle")
+treeModel = rpart(classe ~ ., data = trainData, method = "class")
+prp(treeModel) # fast plot
+```
