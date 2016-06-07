@@ -23,26 +23,23 @@ str(trainRaw$classe)
 
 ## STEP 3: DATA CLEANING EXERCISE
 ```{r}
-sum(complete.cases(trainRaw))
 trainRaw = trainRaw[, colSums(is.na(trainRaw)) == 0] # RETAIN COLUMNS WITHOUT NAs
 testRaw = testRaw[, colSums(is.na(testRaw)) == 0] # RETAIN COLUMNS WITHOUT NAs
 classe = trainRaw$classe
-trainRemove = grepl("^X|timestamp|window", names(trainRaw))
-trainRaw = trainRaw[,!trainRemove]
-trainCleaned = trainRaw[, sapply(trainRaw, is.numeric)] #RETAIN NUMERIC COLUMNS
-trainCleaned$classe = classe # THIS IS A FACTOR WE ARE TRYING TO PREDICT
+trainRaw = trainRaw[,-c(1,3,4,5,6,7)]
+trainOnlyNum = trainRaw[, sapply(trainRaw, is.numeric)] #RETAIN NUMERIC COLUMNS
+trainOnlyNum$classe = classe # THIS IS A FACTOR WE ARE TRYING TO PREDICT
 
-testRemove = grepl("^X|timestamp|window", names(testRaw))
-testRaw = testRaw[,!testRemove]
-testCleaned = testRaw[, sapply(testRaw, is.numeric)]
+testRaw = testRaw[,-c(1,3,4,5,6,7)]
+testOnlyNum = testRaw[, sapply(testRaw, is.numeric)]
 ```
 
 ## STEP 4: MODEL USING RANDOM FOREST - USE 70:30 FOR CROSS-VALIDATION
 ```{r}
 set.seed(1000) # For reproducibile purpose
-inTrain = createDataPartition(trainCleaned$classe, p = 0.70, list = F)
-trainData = trainCleaned[inTrain,]
-testData = trainCleaned[-inTrain,]
+inTrain = createDataPartition(trainOnlyNum$classe, p = 0.70, list = F)
+trainData = trainOnlyNum[inTrain,]
+testData = trainOnlyNum[-inTrain,]
 controlRf <- trainControl(method = "cv", 5)
 modelRf <-
 	train(
@@ -52,6 +49,7 @@ modelRf <-
 		trControl = controlRf,
 		ntree = 250
 	)
+
 ```
 
 ## STEP 5: PREDICT USING THE TRAIN DATA
@@ -65,9 +63,9 @@ confusionMatrix(testData$classe, predictRf)
 confusionMatrix(testData$classe, predictRf)$overall[1]
 accuracy = postResample(predictRf, testData$classe)
 accuracy
-outSampleError =	1 - as.numeric(confusionMatrix(testData$classe, predictRf)$overall[1])
-outSampleError
-result =	predict(modelRf, testCleaned[,-length(names(testCleaned))])
+outOfSampleError =	1 - as.numeric(confusionMatrix(testData$classe, predictRf)$overall[1])
+outOfSampleError
+result =	predict(modelRf, testOnlyNum[,-length(names(testOnlyNum))])
 result
 ```
 

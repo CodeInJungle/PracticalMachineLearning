@@ -151,26 +151,22 @@ dim(trainRaw)</code></pre>
 </div>
 <div id="step-3-data-cleaning-exercise" class="section level2">
 <h2>STEP 3: DATA CLEANING EXERCISE</h2>
-<pre class="r"><code>sum(complete.cases(trainRaw))</code></pre>
-<pre><code>## [1] 406</code></pre>
 <pre class="r"><code>trainRaw = trainRaw[, colSums(is.na(trainRaw)) == 0] # RETAIN COLUMNS WITHOUT NAs
 testRaw = testRaw[, colSums(is.na(testRaw)) == 0] # RETAIN COLUMNS WITHOUT NAs
 classe = trainRaw$classe
-trainRemove = grepl(&quot;^X|timestamp|window&quot;, names(trainRaw))
-trainRaw = trainRaw[,!trainRemove]
-trainCleaned = trainRaw[, sapply(trainRaw, is.numeric)] #RETAIN NUMERIC COLUMNS
-trainCleaned$classe = classe # THIS IS A FACTOR WE ARE TRYING TO PREDICT
+trainRaw = trainRaw[,-c(1,3,4,5,6,7)]
+trainOnlyNum = trainRaw[, sapply(trainRaw, is.numeric)] #RETAIN NUMERIC COLUMNS
+trainOnlyNum$classe = classe # THIS IS A FACTOR WE ARE TRYING TO PREDICT
 
-testRemove = grepl(&quot;^X|timestamp|window&quot;, names(testRaw))
-testRaw = testRaw[,!testRemove]
-testCleaned = testRaw[, sapply(testRaw, is.numeric)]</code></pre>
+testRaw = testRaw[,-c(1,3,4,5,6,7)]
+testOnlyNum = testRaw[, sapply(testRaw, is.numeric)]</code></pre>
 </div>
 <div id="step-4-model-using-random-forest---use-7030-for-cross-validation" class="section level2">
 <h2>STEP 4: MODEL USING RANDOM FOREST - USE 70:30 FOR CROSS-VALIDATION</h2>
 <pre class="r"><code>set.seed(1000) # For reproducibile purpose
-inTrain = createDataPartition(trainCleaned$classe, p = 0.70, list = F)
-trainData = trainCleaned[inTrain,]
-testData = trainCleaned[-inTrain,]
+inTrain = createDataPartition(trainOnlyNum$classe, p = 0.70, list = F)
+trainData = trainOnlyNum[inTrain,]
+testData = trainOnlyNum[-inTrain,]
 controlRf &lt;- trainControl(method = &quot;cv&quot;, 5)
 modelRf &lt;-
     train(
@@ -226,10 +222,10 @@ modelRf &lt;-
 accuracy</code></pre>
 <pre><code>##  Accuracy     Kappa 
 ## 0.9928632 0.9909720</code></pre>
-<pre class="r"><code>outSampleError =    1 - as.numeric(confusionMatrix(testData$classe, predictRf)$overall[1])
-outSampleError</code></pre>
+<pre class="r"><code>outOfSampleError =  1 - as.numeric(confusionMatrix(testData$classe, predictRf)$overall[1])
+outOfSampleError</code></pre>
 <pre><code>## [1] 0.007136788</code></pre>
-<pre class="r"><code>result =    predict(modelRf, testCleaned[,-length(names(testCleaned))])
+<pre class="r"><code>result =    predict(modelRf, testOnlyNum[,-length(names(testOnlyNum))])
 result</code></pre>
 <pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
 ## Levels: A B C D E</code></pre>
